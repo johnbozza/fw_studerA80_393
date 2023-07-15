@@ -16,7 +16,7 @@ typedef struct FlipFlop
 	name : number assigned to the flipflop to keep track of it
 	size : number of inputs. The xtra input will be always set to TRUE
 */
-void make_flipflop(FlipFlop *new_flipflop);
+void logic_gates_make_flipflop(FlipFlop *new_flipflop);
 
 
 /*
@@ -27,6 +27,6 @@ void make_flipflop(FlipFlop *new_flipflop);
 	if previous SET state was 0 and now it is 1, sets the OUTPUT to 1
 	assign the current values to values received
 */
-void do_flipflop(FlipFlop *flipflop, bool new_reset, bool new_set);
+void logic_gates_do_flipflop(FlipFlop *flipflop, bool new_reset, bool new_set);
 
 #endif /* LOGIC_GATES_H_ */

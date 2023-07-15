@@ -22,7 +22,9 @@ typedef struct circuit
 
 void circuit_init();
 void circuit_update();
-Circuit * get_circuit();
+// static void circuit_do_outputs();
+// static void circuit_do_flfp();
+Circuit * circuit_get_circuit();
 
 #define AND(a,b)				    (bool)(a && b)
 #define OR(a,b)					    (bool)(a || b)

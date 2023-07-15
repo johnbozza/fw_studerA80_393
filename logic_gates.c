@@ -1,13 +1,13 @@
 #include "includes/logic_gates.h"
 
-void make_flipflop(FlipFlop *new_flipflop)
+void logic_gates_make_flipflop(FlipFlop *new_flipflop)
 {
 	new_flipflop->reset_port	= true;
 	new_flipflop->set_port		= true;
 	new_flipflop->set_state		= true;
 }
 
-void do_flipflop(FlipFlop *flipflop, bool new_reset, bool new_set)
+void logic_gates_do_flipflop(FlipFlop *flipflop, bool new_reset, bool new_set)
 {
 	if ( new_reset	&&	( ! flipflop->reset_port) ) flipflop->set_state = false;
 	if ( new_set	&&	( ! flipflop->set_port) )	flipflop->set_state = true;

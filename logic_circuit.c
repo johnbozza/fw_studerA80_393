@@ -2,7 +2,7 @@
 
 Circuit circuit;
 
-Circuit * get_circuit()
+Circuit * circuit_get_circuit()
 {
     return &circuit;
 }
@@ -12,24 +12,24 @@ void circuit_init()
     for (int i = 0; i < NUM_OF_FLIPFLOPS; i++)
     {
         FlipFlop tmp_ff;
-        make_flipflop(&tmp_ff);
+        logic_gates_make_flipflop(&tmp_ff);
         circuit.ffs[i] = tmp_ff;
     }
 }
 
-void do_flfp()
+static void circuit_do_flfp()
 {
     for ( FlipFlopsOutput flfp = 0; flfp < NUM_OF_FLIPFLOPS; flfp++)
     {
         if ( flfp == FLFP_01_OUT )
         {
-            do_flipflop((FlipFlop*)&circuit.ffs[flfp],
+            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
                             circuit.signal_input[MOVE_IN],
                             AND( circuit.signal_output[FF3_OUT], circuit.signal_output[FF2_OUT] ) );//REVIEW THIS ON FF IS NOT FLFP
         }
         if ( flfp == FLFP_02_OUT )
         {
-            do_flipflop((FlipFlop*)&circuit.ffs[flfp],
+            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
                             AND(AND( circuit.signal_input[FAD_IN], AND ( NOT(circuit.signal_input[STOP_IN]), NOT(circuit.signal_input[END_IN]))),
                                     (OR( circuit.signal_input[CUT_IN], circuit.signal_input[MOVE_IN]))),
                             AND((AND( circuit.signal_input[REW_IN], circuit.signal_input[FORW_IN])),
@@ -38,7 +38,7 @@ void do_flfp()
         }
         if ( flfp == FLFP_03_OUT )
         {
-            do_flipflop((FlipFlop*)&circuit.ffs[flfp],
+            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
                             AND((AND( circuit.signal_input[REW_IN], circuit.signal_input[FORW_IN])),
                                     AND((OR( circuit.signal_input[CUT_IN], circuit.signal_input[MOVE_IN])), circuit.signal_input[REW_IN]) ),
                             AND((AND( NOT( AND( circuit.signal_input[END_IN], circuit.signal_input[FAD_IN] ) ), circuit.signal_input[REPR_IN])),
@@ -47,7 +47,7 @@ void do_flfp()
         }
         if ( flfp == FLFP_04_OUT )
         {
-            do_flipflop((FlipFlop*)&circuit.ffs[flfp],
+            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
                             AND((AND( circuit.signal_input[REW_IN], circuit.signal_input[FORW_IN])),
                                     AND( circuit.signal_input[FAD_IN], AND ( NOT(circuit.signal_input[STOP_IN]), NOT(circuit.signal_input[END_IN])))),
                             AND((OR( circuit.signal_input[CUT_IN], circuit.signal_input[MOVE_IN])),
@@ -56,7 +56,7 @@ void do_flfp()
         }
         if ( flfp == FLFP_05_OUT )
         {
-            do_flipflop((FlipFlop*)&circuit.ffs[flfp],
+            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
                             AND((OR( circuit.signal_input[CUT_IN], circuit.signal_input[MOVE_IN])),
                                     AND(AND( circuit.signal_input[FAD_IN], AND ( NOT(circuit.signal_input[STOP_IN]), NOT(circuit.signal_input[END_IN]))),
                                         (AND( circuit.signal_input[REW_IN], circuit.signal_input[FORW_IN])))),
@@ -66,11 +66,11 @@ void do_flfp()
     }
 }
 
-void do_outputs()
+static void circuit_do_outputs()
 {
     for ( SignalOutputs out = 0; out < NUM_OF_OUTPUTS; out++)
     {
-        if ( out == MOVE2_OUT ) circuit.signal_output[out] = NOT( MOVE_IN );
+        if ( out == MOVE2_OUT ) circuit.signal_output[out] = NOT( circuit.signal_input[MOVE_IN] );
 
         if ( out == FF0_OUT )	circuit.signal_output[out] = AND( circuit.ffs[FLFP_01_OUT].set_state, AND ( circuit.signal_output[FF2_OUT], circuit.signal_output[FF3_OUT] ) );
 
@@ -80,7 +80,7 @@ void do_outputs()
 
         if ( out == FF3_OUT )	circuit.signal_output[out] = circuit.ffs[FLFP_04_OUT].set_state;
 
-        if ( out == CUT_OUT )	circuit.signal_output[out] = CUT_IN;
+        if ( out == CUT_OUT )	circuit.signal_output[out] = circuit.signal_input[CUT_IN];
 
         if ( out == REC_OUT )	circuit.signal_output[out] = circuit.ffs[FLFP_05_OUT].set_state;
 		
@@ -99,7 +99,7 @@ void do_outputs()
 }
 void circuit_update()
 {
-    do_flfp();
+    circuit_do_flfp();
 
-    do_outputs();
+    circuit_do_outputs();
 }
