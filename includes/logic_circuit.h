@@ -17,6 +17,8 @@ typedef struct circuit
     FlipFlop ffs[NUM_OF_FLIPFLOPS];
     bool signal_input[NUM_OF_INPUTS];
     bool signal_output[NUM_OF_OUTPUTS];
+	bool direction;
+	bool slow;
 
 } Circuit;
 

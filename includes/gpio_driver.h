@@ -2,22 +2,26 @@
 #define GPIO_DRIVER_H_
 
 #include <stdbool.h>
-
-#define F_CPU			16000000
-#define TIMER_1S		65535 - ( F_CPU / 1024 ) / 32
-
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include "board_def.h"
 #include "spi_driver.h"
 #include "logic_circuit.h"
 
-void gpio_init();
+#define F_CPU			16000000
+#define TIMER_1S		65535 - ( F_CPU / 1024 ) / 32
+
+void gpio_init(uint8_t eeprom_register);
 void gpio_uart_setup();
-void gpio_do_uart_rx();
+void gpio_do_uart_rx(uint8_t ch);
 void gpio_timer_init();
 void gpio_do_timer();
 void gpio_do_update();
+void gpio_do_encoder();
+void gpio_trigger_clk();
+
+#define FORWARD		true
+#define REWARD		false
 
 	// PORT B
 	// PB0 pin 14 IN	YBI_FAD

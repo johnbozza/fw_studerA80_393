@@ -84,17 +84,17 @@ static void circuit_do_outputs()
 
         if ( out == REC_OUT )	circuit.signal_output[out] = circuit.ffs[FLFP_05_OUT].set_state;
 		
-		if ( out == M4_1_OUT )	circuit.signal_output[out] = 0; 
-		
-		if ( out == M4_2_OUT )	circuit.signal_output[out] = 0; 
-		
-		if ( out == M4_3_OUT )	circuit.signal_output[out] = 0; 
-		
-		if ( out == M4_4_OUT )	circuit.signal_output[out] = 0; 
-		
-		if ( out == DIR_OUT )	circuit.signal_output[out] = 0; 
-		
-		if ( out == CLK_OUT )	circuit.signal_output[out] = 0; 
+// 		if ( out == M4_1_OUT )	circuit.signal_output[out] = 0; 
+// 		
+// 		if ( out == M4_2_OUT )	circuit.signal_output[out] = 0; 
+// 		
+// 		if ( out == M4_3_OUT )	circuit.signal_output[out] = 0; 
+// 		
+// 		if ( out == M4_4_OUT )	circuit.signal_output[out] = 0; 
+// 		
+// 		if ( out == DIR_OUT )	circuit.signal_output[out] = 0; 
+// 		
+// 		if ( out == CLK_OUT )	circuit.signal_output[out] = 0; 
     }
 }
 void circuit_update()
