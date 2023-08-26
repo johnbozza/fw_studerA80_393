@@ -25,24 +25,27 @@ static void circuit_do_flfp()
         {
             logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
                             circuit.signal_input[MOVE_IN],
-                            AND( circuit.signal_output[FF3_OUT], circuit.signal_output[FF2_OUT] ) );//REVIEW THIS ON FF IS NOT FLFP
+                            ( circuit.signal_output[FF3_OUT] && circuit.signal_output[FF4_OUT] ) );//REVIEW THIS ON FF IS NOT FLFP
         }
+// 		R (FAD+STOP+END)(CUT+MOVE)
+// 		S: (REW.FORW)( (END.FAD) . REPR)
         if ( flfp == FLFP_02_OUT )
         {
             logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
-                            AND(AND( circuit.signal_input[FAD_IN], AND ( NOT(circuit.signal_input[STOP_IN]), NOT(circuit.signal_input[END_IN]))),
-                                    (OR( circuit.signal_input[CUT_IN], circuit.signal_input[MOVE_IN]))),
-                            AND((AND( circuit.signal_input[REW_IN], circuit.signal_input[FORW_IN])),
-                                    (AND( NOT( AND( circuit.signal_input[END_IN], circuit.signal_input[FAD_IN] ) ), circuit.signal_input[REPR_IN])))
+                            ( circuit.signal_input[FAD_IN] || NOT(circuit.signal_input[STOP_IN]) || NOT(circuit.signal_input[END_IN]) ) 
+							&& ( circuit.signal_input[CUT_IN] || circuit.signal_input[MOVE_IN] ),
+							( circuit.signal_input[REW_IN] && circuit.signal_input[FORW_IN] ) 
+							&& ( ( NOT( circuit.signal_input[END_IN] && circuit.signal_input[FAD_IN] ) ) && circuit.signal_input[REPR_IN] )
+
                         );
         }
+// 		R (REW.FORW)(CUT + MOVE)(REW)
+// 		S: ( (END.FAD) . REPR )(FORW)
         if ( flfp == FLFP_03_OUT )
         {
             logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
-                            AND((AND( circuit.signal_input[REW_IN], circuit.signal_input[FORW_IN])),
-                                    AND((OR( circuit.signal_input[CUT_IN], circuit.signal_input[MOVE_IN])), circuit.signal_input[REW_IN]) ),
-                            AND((AND( NOT( AND( circuit.signal_input[END_IN], circuit.signal_input[FAD_IN] ) ), circuit.signal_input[REPR_IN])),
-                                    circuit.signal_input[FORW_IN])
+                            ( (circuit.signal_input[REW_IN] && circuit.signal_input[FORW_IN]) && (circuit.signal_input[CUT_IN] || circuit.signal_input[MOVE_IN] ) && circuit.signal_input[REW_IN] ),
+							( ( NOT( circuit.signal_input[END_IN] && circuit.signal_input[FAD_IN] ) && circuit.signal_input[REPR_IN] ) && circuit.signal_input[FORW_IN] )
                         );
         }
         if ( flfp == FLFP_04_OUT )
@@ -68,21 +71,21 @@ static void circuit_do_flfp()
 
 static void circuit_do_outputs()
 {
-    for ( SignalOutputs out = 0; out < NUM_OF_OUTPUTS; out++)
-    {
-        if ( out == MOVE2_OUT ) circuit.signal_output[out] = NOT( circuit.signal_input[MOVE_IN] );
+        circuit.signal_output[MOVE2_OUT] = NOT( circuit.signal_input[MOVE_IN] );
 
-        if ( out == FF0_OUT )	circuit.signal_output[out] = AND( circuit.ffs[FLFP_01_OUT].set_state, AND ( circuit.signal_output[FF2_OUT], circuit.signal_output[FF3_OUT] ) );
+        circuit.signal_output[FF0_OUT] = NOT( circuit.ffs[FLFP_01_OUT].set_state && circuit.signal_output[FF2_OUT] && circuit.signal_output[FF3_OUT] );
 
-        if ( out == FF1_OUT )	circuit.signal_output[out] = circuit.ffs[FLFP_02_OUT].set_state;
+        circuit.signal_output[FF1_OUT] = circuit.ffs[FLFP_02_OUT].set_state;
 		
-        if ( out == FF2_OUT )	circuit.signal_output[out] = circuit.ffs[FLFP_03_OUT].set_state;
+        circuit.signal_output[FF2_OUT] = circuit.ffs[FLFP_03_OUT].set_state;
 
-        if ( out == FF3_OUT )	circuit.signal_output[out] = circuit.ffs[FLFP_04_OUT].set_state;
+        circuit.signal_output[FF3_OUT] = circuit.ffs[FLFP_04_OUT].set_state;
 
-        if ( out == CUT_OUT )	circuit.signal_output[out] = circuit.signal_input[CUT_IN];
+        circuit.signal_output[FF4_OUT] = circuit.ffs[FLFP_05_OUT].set_state;
+		
+		circuit.signal_output[CUT_OUT] = circuit.signal_input[CUT_IN];
 
-        if ( out == REC_OUT )	circuit.signal_output[out] = circuit.ffs[FLFP_05_OUT].set_state;
+        circuit.signal_output[REC_OUT] = circuit.ffs[FLFP_05_OUT].set_state;
 		
 // 		if ( out == M4_1_OUT )	circuit.signal_output[out] = 0; 
 // 		
@@ -95,7 +98,6 @@ static void circuit_do_outputs()
 // 		if ( out == DIR_OUT )	circuit.signal_output[out] = 0; 
 // 		
 // 		if ( out == CLK_OUT )	circuit.signal_output[out] = 0; 
-    }
 }
 void circuit_update()
 {

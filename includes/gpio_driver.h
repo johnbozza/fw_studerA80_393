@@ -14,6 +14,7 @@
 void gpio_init(uint8_t eeprom_register);
 void gpio_uart_setup();
 void gpio_do_uart_rx(uint8_t ch);
+void gpio_send_str(char * str);
 void gpio_timer_init();
 void gpio_do_timer();
 void gpio_do_update();
