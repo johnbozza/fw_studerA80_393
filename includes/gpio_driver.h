@@ -21,6 +21,8 @@ void gpio_do_update();
 void gpio_do_encoder();
 void gpio_trigger_clk();
 
+void gpio_signal_state_change();
+
 #define FORWARD		true
 #define REWARD		false
 

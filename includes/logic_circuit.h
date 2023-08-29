@@ -2,24 +2,24 @@
 #define LOGIC_CIRCUIT_H_
 
 #include <stdbool.h>
-#include "logic_gates.h"
+#include <stdint.h>
 
 #define NUM_OF_INPUTS        10
 #define NUM_OF_OUTPUTS       14
-#define NUM_OF_FLIPFLOPS     5
 
 typedef enum { FAD_IN, REC_IN, END_IN, CUT_IN, REW_IN, STOP_IN, MOVE_IN, FORW_IN, REPR_IN, LOW_IN } SignalInputs;
-typedef enum { FLFP_01_OUT, FLFP_02_OUT, FLFP_03_OUT, FLFP_04_OUT, FLFP_05_OUT } FlipFlopsOutput;
 typedef enum { MOVE2_OUT, FF0_OUT, FF1_OUT, FF2_OUT, FF3_OUT, FF4_OUT, CUT_OUT, REC_OUT, M4_1_OUT, M4_2_OUT, M4_3_OUT, M4_4_OUT, DIR_OUT, CLK_OUT } SignalOutputs;
+	
+typedef enum { st_INIT, st_FORW, st_REW, st_REPR, st_REC, st_CUT } FF_States;
 
 typedef struct circuit
 {
-    FlipFlop ffs[NUM_OF_FLIPFLOPS];
     bool signal_input[NUM_OF_INPUTS];
     bool signal_output[NUM_OF_OUTPUTS];
 	bool direction;
 	bool slow;
-
+	bool move;
+	uint8_t state;
 } Circuit;
 
 void circuit_init();
@@ -27,6 +27,7 @@ void circuit_update();
 // static void circuit_do_outputs();
 // static void circuit_do_flfp();
 Circuit * circuit_get_circuit();
+void circuit_do_outputs();
 
 #define AND(a,b)				    (bool)(a && b)
 #define OR(a,b)					    (bool)(a || b)

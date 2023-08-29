@@ -1,6 +1,24 @@
 #include "includes/logic_circuit.h"
 
 Circuit circuit;
+uint8_t cstates[] = { 0x01, 0x07, 0x03, 0x0E, 0x10, 0x09 };
+	/*
+				FF0		FF1		FF2		FF3		FF4
+	st_INIT :	1		0		0		0		0
+	st_FORW :	1		1		1		0		0
+	st_REW	:	1		1		0		0		0
+	st_REPR	:	0		1		1		1		0
+	st_REC	:	0		1		1		1		1
+	st_CUT	:	1		0		0		1		0
+	*/	
+	
+#define IS_MOVING		0
+#define NOT_MOVING		1
+
+#define TAPE_IN		0
+#define TAPE_OUT	1
+
+#define PRESSED		0
 
 Circuit * circuit_get_circuit()
 {
@@ -9,99 +27,67 @@ Circuit * circuit_get_circuit()
 
 void circuit_init()
 {
-    for (int i = 0; i < NUM_OF_FLIPFLOPS; i++)
-    {
-        FlipFlop tmp_ff;
-        logic_gates_make_flipflop(&tmp_ff);
-        circuit.ffs[i] = tmp_ff;
-    }
+	circuit.move = NOT_MOVING;
+	circuit.state = cstates[st_INIT];
 }
 
-static void circuit_do_flfp()
+void circuit_do_outputs()
 {
-    for ( FlipFlopsOutput flfp = 0; flfp < NUM_OF_FLIPFLOPS; flfp++)
-    {
-        if ( flfp == FLFP_01_OUT )
-        {
-            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
-                            circuit.signal_input[MOVE_IN],
-                            ( circuit.signal_output[FF3_OUT] && circuit.signal_output[FF4_OUT] ) );//REVIEW THIS ON FF IS NOT FLFP
-        }
-// 		R (FAD+STOP+END)(CUT+MOVE)
-// 		S: (REW.FORW)( (END.FAD) . REPR)
-        if ( flfp == FLFP_02_OUT )
-        {
-            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
-                            ( circuit.signal_input[FAD_IN] || NOT(circuit.signal_input[STOP_IN]) || NOT(circuit.signal_input[END_IN]) ) 
-							&& ( circuit.signal_input[CUT_IN] || circuit.signal_input[MOVE_IN] ),
-							( circuit.signal_input[REW_IN] && circuit.signal_input[FORW_IN] ) 
-							&& ( ( NOT( circuit.signal_input[END_IN] && circuit.signal_input[FAD_IN] ) ) && circuit.signal_input[REPR_IN] )
-
-                        );
-        }
-// 		R (REW.FORW)(CUT + MOVE)(REW)
-// 		S: ( (END.FAD) . REPR )(FORW)
-        if ( flfp == FLFP_03_OUT )
-        {
-            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
-                            ( (circuit.signal_input[REW_IN] && circuit.signal_input[FORW_IN]) && (circuit.signal_input[CUT_IN] || circuit.signal_input[MOVE_IN] ) && circuit.signal_input[REW_IN] ),
-							( ( NOT( circuit.signal_input[END_IN] && circuit.signal_input[FAD_IN] ) && circuit.signal_input[REPR_IN] ) && circuit.signal_input[FORW_IN] )
-                        );
-        }
-        if ( flfp == FLFP_04_OUT )
-        {
-            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
-                            AND((AND( circuit.signal_input[REW_IN], circuit.signal_input[FORW_IN])),
-                                    AND( circuit.signal_input[FAD_IN], AND ( NOT(circuit.signal_input[STOP_IN]), NOT(circuit.signal_input[END_IN])))),
-                            AND((OR( circuit.signal_input[CUT_IN], circuit.signal_input[MOVE_IN])),
-                                    (AND( NOT( AND( circuit.signal_input[END_IN], circuit.signal_input[FAD_IN] ) ), circuit.signal_input[REPR_IN])))
-                        );
-        }
-        if ( flfp == FLFP_05_OUT )
-        {
-            logic_gates_do_flipflop((FlipFlop*)&circuit.ffs[flfp],
-                            AND((OR( circuit.signal_input[CUT_IN], circuit.signal_input[MOVE_IN])),
-                                    AND(AND( circuit.signal_input[FAD_IN], AND ( NOT(circuit.signal_input[STOP_IN]), NOT(circuit.signal_input[END_IN]))),
-                                        (AND( circuit.signal_input[REW_IN], circuit.signal_input[FORW_IN])))),
-                            circuit.signal_input[REC_IN]
-                        );
-        }
-    }
-}
-
-static void circuit_do_outputs()
-{
-        circuit.signal_output[MOVE2_OUT] = NOT( circuit.signal_input[MOVE_IN] );
-
-        circuit.signal_output[FF0_OUT] = NOT( circuit.ffs[FLFP_01_OUT].set_state && circuit.signal_output[FF2_OUT] && circuit.signal_output[FF3_OUT] );
-
-        circuit.signal_output[FF1_OUT] = circuit.ffs[FLFP_02_OUT].set_state;
-		
-        circuit.signal_output[FF2_OUT] = circuit.ffs[FLFP_03_OUT].set_state;
-
-        circuit.signal_output[FF3_OUT] = circuit.ffs[FLFP_04_OUT].set_state;
-
-        circuit.signal_output[FF4_OUT] = circuit.ffs[FLFP_05_OUT].set_state;
-		
+        circuit.signal_output[MOVE2_OUT] = circuit.signal_input[MOVE_IN];
+        circuit.signal_output[FF0_OUT] = circuit.state & 0x01;
+        circuit.signal_output[FF1_OUT] = circuit.state & 0x02;
+        circuit.signal_output[FF2_OUT] = circuit.state & 0x04;
+        circuit.signal_output[FF3_OUT] = circuit.state & 0x08;
+        circuit.signal_output[FF4_OUT] = circuit.state & 0x10;
 		circuit.signal_output[CUT_OUT] = circuit.signal_input[CUT_IN];
-
-        circuit.signal_output[REC_OUT] = circuit.ffs[FLFP_05_OUT].set_state;
-		
-// 		if ( out == M4_1_OUT )	circuit.signal_output[out] = 0; 
-// 		
-// 		if ( out == M4_2_OUT )	circuit.signal_output[out] = 0; 
-// 		
-// 		if ( out == M4_3_OUT )	circuit.signal_output[out] = 0; 
-// 		
-// 		if ( out == M4_4_OUT )	circuit.signal_output[out] = 0; 
-// 		
-// 		if ( out == DIR_OUT )	circuit.signal_output[out] = 0; 
-// 		
-// 		if ( out == CLK_OUT )	circuit.signal_output[out] = 0; 
+        circuit.signal_output[REC_OUT] = circuit.signal_output[FF4_OUT];
 }
 void circuit_update()
 {
-    circuit_do_flfp();
-
-    circuit_do_outputs();
+	bool static isRepr = false;
+	bool static isRec  = false;
+	
+	bool ReprBtPressed = circuit.signal_input[REPR_IN] == PRESSED;
+	bool recBtPressed  = circuit.signal_input[REC_IN]  == PRESSED;
+	
+	bool fadin_active  = circuit.signal_input[FAD_IN]  == true;
+	
+	if ( circuit.signal_input[END_IN] == TAPE_IN )
+	{
+		if (!fadin_active)
+		{
+			if ( ( isRepr && isRec ) && ( ReprBtPressed || recBtPressed ) ) return;
+					
+			if ( ( ( isRepr || ( isRepr && isRec ) ) && ( circuit.signal_input[MOVE_IN] == IS_MOVING ) && ( !( circuit.state & 0x01 ) ) ) )
+			{
+				circuit.state |= 0x01;
+				circuit_do_outputs();
+				return;
+			}
+			
+			if ( ( isRec && ReprBtPressed ) || ( isRepr &&  recBtPressed ) )
+			{
+				isRepr = true;
+				isRec  = true;
+				circuit.state |= cstates[st_REPR] | cstates[st_REC];
+				circuit_do_outputs();
+				return;
+			}
+		}
+		
+		if		( circuit.signal_input[STOP_IN] == PRESSED )					{ circuit.state = cstates[st_INIT]; isRec = false; isRepr = false; }
+		else if ( circuit.signal_input[FORW_IN] == PRESSED && !fadin_active )	  circuit.state = cstates[st_FORW];
+		else if ( circuit.signal_input[REW_IN]	== PRESSED && !fadin_active )	  circuit.state = cstates[st_REW];	
+		else if ( circuit.signal_input[REPR_IN] == PRESSED )					{ circuit.state = cstates[st_REPR]; isRepr = true; }
+		else if ( circuit.signal_input[REC_IN]	== PRESSED && !fadin_active )	{ circuit.state = cstates[st_REC];	isRec  = true;  }
+		else if ( circuit.signal_input[CUT_IN]	== PRESSED && !fadin_active )	  circuit.state = cstates[st_CUT];
+	}
+	else
+	{
+		circuit.state = cstates[st_INIT];
+		isRepr = false;
+		isRec  = false;
+	}
+	
+	circuit_do_outputs();
 }

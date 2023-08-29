@@ -166,16 +166,10 @@
     <Compile Include="includes\logic_circuit.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="includes\logic_gates.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="includes\spi_driver.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="logic_circuit.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="logic_gates.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="main.c">

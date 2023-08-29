@@ -1,5 +1,4 @@
 #include "includes/gpio_driver.h"
-#include "includes/board_def.h"
 #include <util/delay.h>
 #include <stdio.h>
 
@@ -57,21 +56,30 @@ void gpio_init(uint8_t eeprom_register)
 	EICRA |= ( 1 << ISC10 );	// INT1 LEVEL CHANGE
 		
 	EIMSK |= ( 1 << INT1 );
-
+	
+	gpio_do_uart_rx(0x31);
+	gpio_do_uart_rx(0x32);
+	gpio_do_uart_rx(0x33);
+	gpio_do_uart_rx(0x34);
 	gpio_do_update();
+	gpio_do_uart_rx(0x34);
 	
 	sei();
 }
 
 void gpio_do_uart_rx(uint8_t ch)
 {
+	cli();
+	
 	char str[40] = {0};
 	
 	if ( ( ch == 0x30 ) || ( ch == 0x31 ) )
 	{
 		Circ->signal_input[MOVE_IN] = ch - 0x30;
+		gpio_do_update();
 		sprintf(str, "Direction = %d\n", Circ->signal_input[MOVE_IN]);
 		gpio_send_str(str);
+		
 	}
 	
 	if ( ch == 0x32 )
@@ -105,22 +113,11 @@ void gpio_do_uart_rx(uint8_t ch)
 	
 	if ( ch == 0x34 )
 	{
-		sprintf(str, "FlipFlops = ");
+		sprintf(str, "State = %x\n", Circ->state);
 		gpio_send_str(str);
-		
-		for ( FlipFlopsOutput i = 0; i < NUM_OF_FLIPFLOPS; i++)
-		{
-			sprintf(str, "%d", Circ->ffs[i].set_port);
-			gpio_send_str(str);
-			sprintf(str, "%d", Circ->ffs[i].reset_port);
-			gpio_send_str(str);			
-			sprintf(str, "%d   ", Circ->ffs[i].set_state);
-			gpio_send_str(str);
-		}
-		
-		sprintf(str, "\n");
-		gpio_send_str(str);
-	}	
+	}
+	
+	sei();
 }
 
 void gpio_send_str(char * str)
@@ -133,41 +130,21 @@ void gpio_send_str(char * str)
 	}
 }
 
-	
-
-// 	for (int i = 0; i < NUM_OF_OUTPUTS; i ++)
-// 	{
-// 		UDR0 = Circ->signal_output[i];
-// 		while (!( UCSR0A & (1<<UDRE0)));
-// 	}	
-
 void gpio_do_timer()
 {
 	static uint8_t mcu_led_period = 0;
 
-cli();
-
-	//gpio_do_update();
-	
 	if ( ++mcu_led_period > 16)
 	{
 		PORTB ^= ( 1 << AUX_LED_PIN );
 		mcu_led_period = 0;
-		
-		gpio_do_uart_rx(2);
 	}
-	//gpio_do_update();
 	TCNT1 = TIMER_1S;
-	
-	gpio_do_update();
-sei();
 
 }
 
 void gpio_do_update()
 {	
-	circuit_update();
-	
 	Circ->signal_input[FAD_IN]	= _READ_PIN(YBI_FAD_PORT,	YBI_FAD_PIN);
 	Circ->signal_input[REC_IN]	= _READ_PIN(YPS_REC_PORT,	YPS_REC_PIN);
 	Circ->signal_input[END_IN]	= _READ_PIN(YBI_END_PORT,	YBI_END_PIN);
@@ -178,7 +155,7 @@ void gpio_do_update()
 	Circ->signal_input[FORW_IN]	= _READ_PIN(YPS_FORW_PORT,	YPS_FORW_PIN);
 	Circ->signal_input[REPR_IN]	= _READ_PIN(YPS_REPR_PORT,	YPS_REPR_PIN);
 	Circ->signal_input[LOW_IN]	= _READ_PIN(YBI_LOW_PORT,	YBI_LOW_PIN);
-	
+
 	circuit_update();
 
 	// values setup by logic circuit
@@ -317,24 +294,25 @@ ISR (TIMER1_OVF_vect)
 }
 ISR (USART_RX_vect)
 {
-	cli();
-		uint8_t ch = UDR0;		
-		gpio_do_uart_rx(ch);
-	sei();
+	uint8_t ch = UDR0;		
+	gpio_do_uart_rx(ch);
 }
+
 #define UART_CMD 0x34
-ISR (PCINT0_vect)
+void gpio_signal_state_change()
 {
 	gpio_do_update();
 	gpio_do_uart_rx(UART_CMD);
+}
+ISR (PCINT0_vect)
+{
+	gpio_signal_state_change();
 }
 ISR (PCINT1_vect)
 {
-	gpio_do_update();
-	gpio_do_uart_rx(UART_CMD);
+	gpio_signal_state_change();
 }
 ISR (PCINT2_vect)
 {
-	gpio_do_update();
-	gpio_do_uart_rx(UART_CMD);
+	gpio_signal_state_change();
 }
