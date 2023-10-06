@@ -2,7 +2,8 @@
 #include <util/delay.h>
 #include <stdio.h>
 
-//#define EXT_INT
+#define UART_TX_BUFFER		40
+#define UART_ENABLED
 
 volatile Circuit *Circ;
 
@@ -25,12 +26,14 @@ void gpio_init(uint8_t eeprom_register)
 
 	spi_init();
 	
-	// UART SETUP
-	unsigned int ubrr = BAUD_RATE_115200_BPS;
-	UBRR0H = ( ubrr >> 8 );
-	UBRR0L = ( ubrr );
-	UCSR0C = 0x06;       /* Set frame format: 8data, 1stop bit  */
-	UCSR0B = ( 1 << TXEN0 ) | ( 1 << RXEN0 ) | ( 1 << RXCIE0 ); // TX, RX and RX INT
+	#ifdef UART_ENABLED
+		// UART SETUP
+		unsigned int ubrr = BAUD_RATE_115200_BPS;
+		UBRR0H = ( ubrr >> 8 );
+		UBRR0L = ( ubrr );
+		UCSR0C = 0x06;       /* Set frame format: 8data, 1stop bit  */
+		UCSR0B = ( 1 << TXEN0 ) | ( 1 << RXEN0 ) | ( 1 << RXCIE0 ); // TX, RX and RX INT
+	#endif
 	
 
 	PCICR  |= (1 << PCIE0) | (1 << PCIE1)  | (1 << PCIE2);		
@@ -38,11 +41,17 @@ void gpio_init(uint8_t eeprom_register)
 	PCMSK1 |= ( 1 << YPS_REC_PIN ) | ( 1 << YPS_STOP_PIN ) | ( 1 << YPS_REPR_PIN ) | ( 1 << YPS_FORW_PIN );
 	PCMSK2 |= ( 1 << YPS_REW_PIN ) | ( 1 << YPS_CUT_PIN )  | ( 1 << YBI_END_PIN )  | ( 1 << YBI_MOVE_PIN );	
 
-	// TIMER SETUP
+	// Main TIMER SETUP
 	TCNT1 = TIMER_1S;
 	TCCR1B = ( 1 << CS10 ) | ( 1 << CS12 ); // 16M / 1024 = 15625Hz
 	TCCR1A = 0x00; // overflow
 	TIMSK1 = ( 1 << TOIE1 ); // overflow int
+	
+	// Clock Timer Setup
+	TCCR0A = 0x00;
+	CLK_TMR_OFF; // 16M / 1024 = 15625Hz;
+	TIMSK0 = ( 1 << TOIE0 );
+	TCNT0 = 0x01;
 	
 	// set the CLK pin to LOW
 	spi_gpio(YBI_CLK, 0);
@@ -69,16 +78,20 @@ void gpio_init(uint8_t eeprom_register)
 
 void gpio_do_uart_rx(uint8_t ch)
 {
+	#ifdef UART_ENABLED
+		return;
+	#endif
+	
 	cli();
 	
-	char str[40] = {0};
+	char str[UART_TX_BUFFER] = {0};
 	
 	if ( ( ch == 0x30 ) || ( ch == 0x31 ) )
 	{
-		Circ->signal_input[MOVE_IN] = ch - 0x30;
-		gpio_do_update();
-		sprintf(str, "Direction = %d\n", Circ->signal_input[MOVE_IN]);
-		gpio_send_str(str);
+// 		Circ->signal_input[MOVE_IN] = ch - 0x30;
+// 		gpio_do_update();
+// 		sprintf(str, "Direction = %d\n", Circ->signal_input[MOVE_IN]);
+// 		gpio_send_str(str);
 		
 	}
 	
@@ -122,7 +135,7 @@ void gpio_do_uart_rx(uint8_t ch)
 
 void gpio_send_str(char * str)
 {
-	for (int i = 0; i < 40; i++)
+	for (int i = 0; i < UART_TX_BUFFER; i++)
 	{
 		if ( str[i] == 0 ) break;
 		UDR0 = (char)str[i];
@@ -151,7 +164,7 @@ void gpio_do_update()
 	Circ->signal_input[CUT_IN]	= _READ_PIN(YPS_CUT_PORT,	YPS_CUT_PIN);
 	Circ->signal_input[REW_IN]	= _READ_PIN(YPS_REW_PORT,	YPS_REW_PIN);
 	Circ->signal_input[STOP_IN]	= _READ_PIN(YPS_STOP_PORT,	YPS_STOP_PIN);
-	//Circ->signal_input[MOVE_IN]	= _READ_PIN(YBI_MOVE_PORT,	YBI_MOVE_PIN);
+	Circ->signal_input[MOVE_IN]	= _READ_PIN(YBI_MOVE_PORT,	YBI_MOVE_PIN);
 	Circ->signal_input[FORW_IN]	= _READ_PIN(YPS_FORW_PORT,	YPS_FORW_PIN);
 	Circ->signal_input[REPR_IN]	= _READ_PIN(YPS_REPR_PORT,	YPS_REPR_PIN);
 	Circ->signal_input[LOW_IN]	= _READ_PIN(YBI_LOW_PORT,	YBI_LOW_PIN);
@@ -178,18 +191,13 @@ void gpio_do_update()
  	
 }
 
-void gpio_do_encoder()
-{
-
-}
-
 void gpio_trigger_clk()
 {
 
 	static volatile bool ping_pong = true;
-	cli();
-	//spi_gpio(YBI_CLK, ping_pong);
-	// trigger clk to turn off after 40uS
+
+	spi_gpio(YBI_CLK, true);
+	CLK_TMR_ON;
 	
 	if ( Circ->signal_output[DIR_OUT] == REWARD )
 	{
@@ -222,7 +230,6 @@ void gpio_trigger_clk()
 	gpio_do_update();	
 	ping_pong = !ping_pong;	
 
-	sei();
 }
 
 /*INTERRUPTS*/
@@ -257,13 +264,15 @@ M4
 
 ISR (TIMER0_OVF_vect)
 {
-	//spi_gpio(YBI_CLK, 0);
+	spi_gpio(YBI_CLK, 0);
+	CLK_TMR_OFF;
 }
+
 ISR (INT1_vect)
 {
 	volatile bool qp_dir_1, qp_dir_2;
 	
-	if ( Circ->signal_input[END_IN] )
+	if ( Circ->signal_input[END_IN] ==  0)
 	{
 		qp_dir_1 = _READ_PIN(QP_DIR1_PORT, QP_DIR1_PIN);
 		qp_dir_2 = _READ_PIN(QP_DIR2_PORT, QP_DIR2_PIN);

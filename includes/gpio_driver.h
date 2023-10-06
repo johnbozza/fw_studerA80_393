@@ -18,13 +18,15 @@ void gpio_send_str(char * str);
 void gpio_timer_init();
 void gpio_do_timer();
 void gpio_do_update();
-void gpio_do_encoder();
 void gpio_trigger_clk();
 
 void gpio_signal_state_change();
 
 #define FORWARD		true
 #define REWARD		false
+
+#define CLK_TMR_ON	TCCR0B = ( 0 << CS10 ) | ( 1 << CS12 );
+#define CLK_TMR_OFF TCCR0B = 0x00;
 
 	// PORT B
 	// PB0 pin 14 IN	YBI_FAD
